@@ -15,7 +15,6 @@ st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 try:
     ARIA_KEY = st.secrets["ARIA_KEY"]
 except:
-    # Si estás probando local y no usas secrets, poné tu clave acá temporalmente
     ARIA_KEY = "TU_CLAVE_ARIA_AQUI"
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
@@ -47,22 +46,30 @@ def log_consulta(dni, nombre, plan, saldo, email):
         for i, row in enumerate(data):
             if i == 0: continue
             if len(row) >= 3:
+                # Comparamos Fecha (Col 0) y DNI (Col 2)
                 if row[0] == fecha_hoy and row[2] == dni_str:
                     fila_encontrada = i + 1
+                    # En tu Excel: Col H (Consultas) es la columna 8 (indice 7)
                     try: contador_consultas = int(row[7]) 
                     except: contador_consultas = 0
                     break
         
         if fila_encontrada > 0:
-            # ACTUALIZAR
-            sheet.update_cell(fila_encontrada, 2, hora_actual) 
-            sheet.update_cell(fila_encontrada, 8, contador_consultas + 1)
-            # Si recuperamos un email y antes no tenía, actualizamos
-            if email != "-" and len(row) > 6 and row[6] == "-":
-                 sheet.update_cell(fila_encontrada, 7, email)
+            # ACTUALIZAR SI YA EXISTE
+            sheet.update_cell(fila_encontrada, 2, hora_actual) # Actualiza Hora (Col B)
+            sheet.update_cell(fila_encontrada, 8, contador_consultas + 1) # Actualiza Consultas (Col H)
+            
+            # Si recuperamos un email y en el excel estaba vacio o con guion, lo actualizamos
+            # En tu Excel: Email es Col F (Columna 6)
+            if email != "-" and len(row) > 5:
+                 val_actual = row[5] # Indice 5 es Columna 6
+                 if val_actual == "-" or val_actual == "":
+                     sheet.update_cell(fila_encontrada, 6, email)
         else:
-            # INSERTAR NUEVO
-            sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, saldo, email, 1, 0])
+            # INSERTAR NUEVO (ORDEN CORREGIDO SEGÚN TU FOTO)
+            # Fecha, Hora, DNI, Nombre, Plan, EMAIL, SALDO, Consultas, Clicks
+            sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, email, saldo, 1, 0])
+            
     except Exception as e:
         print(f"Error log consulta: {e}")
 
@@ -75,24 +82,31 @@ def log_click(dni):
         data = sheet.get_all_values()
         fila_encontrada = -1
         contador_clicks = 0
+        
         for i, row in enumerate(data):
             if i == 0: continue
             if len(row) >= 3:
                 if row[0] == fecha_hoy and row[2] == dni_str:
                     fila_encontrada = i + 1
+                    # En tu Excel: Clicks es Col I (Columna 9 -> indice 8)
                     try: contador_clicks = int(row[8])
                     except: contador_clicks = 0
                     break
+        
         if fila_encontrada > 0:
+            # Actualiza Clicks (Columna 9)
             sheet.update_cell(fila_encontrada, 9, contador_clicks + 1)
         else:
+            # Fallback raro: Click sin consulta previa
             hora = ahora.strftime("%H:%M:%S")
-            sheet.append_row([fecha_hoy, hora, dni_str, "Desconocido", "-", 0, "-", 1, 1])
+            # Respetamos el orden: Email col 6, Saldo col 7
+            sheet.append_row([fecha_hoy, hora, dni_str, "Desconocido", "-", "-", 0, 1, 1])
+            
     except Exception as e:
         print(f"Error log click: {e}")
 
 # ==========================================
-# 🧠 LÓGICA DE NEGOCIO (CON BÚSQUEDA DE EMAIL)
+# 🧠 LÓGICA DE NEGOCIO (DOBLE LLAMADA API)
 # ==========================================
 def solo_numeros(texto):
     return re.sub(r'\D', '', str(texto))
@@ -109,7 +123,7 @@ def consultar_saldo(dni):
     
     cliente_encontrado = None
     
-    # 1. BUSQUEDA INICIAL (Para encontrar el ID)
+    # 1. BUSQUEDA INICIAL (Para encontrar el ID y datos basicos)
     try:
         res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'ident': dni_limpio}, timeout=5)
         if res.status_code == 200:
@@ -144,10 +158,10 @@ def consultar_saldo(dni):
                 res_email = requests.get(f"{ARIA_URL_BASE}/cliente/{c_id}", headers=headers, params={'relaciones': 'email'}, timeout=4)
                 if res_email.status_code == 200:
                     data_email = res_email.json()
-                    # Buscamos dentro de la lista 'cliente_emails'
+                    # Segun tu captura, el email esta dentro de la lista 'cliente_emails'
                     lista_emails = data_email.get('cliente_emails', [])
                     if lista_emails and len(lista_emails) > 0:
-                        # Extraemos el campo 'cliente_mail_mail'
+                        # Extraemos el campo exacto de tu captura: 'cliente_mail_mail'
                         email_recuperado = lista_emails[0].get('cliente_mail_mail', '-')
         except:
             pass
@@ -203,7 +217,6 @@ st.markdown("""
     .soft-block-text { font-size: 15px; font-weight: 500; line-height: 1.5; color: #6c757d; }
     .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
     .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
-
     @media only screen and (max-width: 600px) {
         .block-container { padding: 2rem 1rem !important; margin-top: 0.5rem; }
         .card-container { padding: 20px; height: 250px; }
@@ -315,4 +328,3 @@ if st.session_state.cliente_data:
         st.markdown('<div class="legal-text">* Al finalizar tu compra elegí la opción "A Convenir"</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="footer-security">🔒 Sistema seguro de SSServicios</div>', unsafe_allow_html=True)
-
