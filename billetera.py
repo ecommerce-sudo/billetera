@@ -7,7 +7,7 @@ import textwrap
 # ==========================================
 # ⚙️ CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Mi Billetera SSS", page_icon="💳", layout="centered")
+st.set_page_config(page_title="S³Pay", page_icon="💳", layout="centered")
 
 # TU CLAVE REAL
 ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
@@ -244,3 +244,4 @@ st.markdown("""
     🔒 Sistema seguro de SSServicios
 </div>
 """, unsafe_allow_html=True)
+
