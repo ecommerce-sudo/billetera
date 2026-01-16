@@ -283,7 +283,7 @@ if st.session_state.cliente_data:
         <div class="soft-block-box">
             <div class="soft-block-title">¡Hola! 👋</div>
             <div class="soft-block-text">
-                En este momento no podemos informarte tu cupo disponible.<br>
+                En este momento no tenes cupo disponible.<br>
                 Te sugerimos volver a consultar más adelante.
             </div>
         </div>
@@ -328,3 +328,4 @@ if st.session_state.cliente_data:
         st.markdown('<div class="legal-text">* Al finalizar tu compra elegí la opción "A Convenir"</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="footer-security">🔒 Sistema seguro de SSServicios</div>', unsafe_allow_html=True)
+
