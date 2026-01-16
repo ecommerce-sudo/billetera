@@ -10,7 +10,7 @@ import textwrap
 st.set_page_config(page_title="Mi Billetera SSS", page_icon="💳", layout="centered")
 
 # TU CLAVE REAL
-ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
+ARIA_KEY = st.secrets["ARIA_KEY"]
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
 LINK_TIENDA = "https://ssstore.com.ar" 
@@ -248,4 +248,5 @@ st.markdown("""
 <div class="footer-security">
     🔒 Sistema seguro de SSServicios
 </div>
+
 """, unsafe_allow_html=True)
