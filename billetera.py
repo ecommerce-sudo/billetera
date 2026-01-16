@@ -2,21 +2,57 @@ import streamlit as st
 import requests
 import re
 import time
-import textwrap
+import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # ==========================================
 # ⚙️ CONFIGURACIÓN
 # ==========================================
 st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 
-# TU CLAVE REAL
-ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
+# --- GESTIÓN DE SECRETOS (CLAVES) ---
+# Intentamos leer las claves desde los secretos de Streamlit.
+# Si no están configuradas, usamos valores vacíos para que no rompa (pero avisará).
+try:
+    ARIA_KEY = st.secrets["ARIA_KEY"]
+except:
+    ARIA_KEY = "TU_CLAVE_ARIA_AQUI" # Solo para pruebas locales si no usas secrets.toml
+
+# --- CONEXIÓN CON GOOGLE SHEETS ---
+def log_to_sheets(dni, nombre, plan, saldo):
+    """Guarda la consulta en Google Sheets de forma silenciosa."""
+    try:
+        # Definimos el alcance (scope)
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        
+        # Leemos las credenciales desde los Secrets de Streamlit
+        # Tienes que copiar el contenido de tu archivo JSON dentro de los secrets
+        creds_dict = st.secrets["gcp_service_account"]
+        
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        
+        # Abre la hoja por su nombre (Asegurate que se llame igual)
+        sheet = client.open("DB_S3Pay").sheet1
+        
+        # Datos a guardar
+        ahora = datetime.datetime.now()
+        fecha = ahora.strftime("%Y-%m-%d")
+        hora = ahora.strftime("%H:%M:%S")
+        
+        # Agrega la fila
+        sheet.append_row([fecha, hora, str(dni), nombre, plan, saldo])
+        
+    except Exception as e:
+        # Si falla el log, imprimimos en consola pero NO mostramos error al usuario
+        print(f"Error guardando métrica: {e}")
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
 LINK_TIENDA = "https://ssstore.com.ar" 
 
 # ==========================================
-# 🎨 ESTILOS CSS (FINAL MOBILE OPTIMIZED)
+# 🎨 ESTILOS CSS (DISEÑO FINAL)
 # ==========================================
 st.markdown("""
 <style>
@@ -25,21 +61,18 @@ st.markdown("""
     
     .stApp { background: linear-gradient(135deg, #eef2f3 0%, #dce4e8 100%); font-family: 'Montserrat', sans-serif; }
     
-    /* --- CAJA PRINCIPAL (CONTENEDOR) --- */
     .block-container {
         background-color: #ffffff;
-        padding: 3rem 2rem; /* Padding desktop */
+        padding: 3rem 2rem;
         border-radius: 25px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.08);
         max-width: 700px;
         margin-top: 2rem;
     }
 
-    /* QUITAR BORDE DEL FORM Y MENSAJES */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
 
-    /* TÍTULOS */
     h1 { 
         text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; 
         color: #1a1a1a; font-size: 2.5rem; margin-bottom: 0.5rem; letter-spacing: -1px;
@@ -47,24 +80,20 @@ st.markdown("""
     sup { font-size: 1.2rem; color: #00d4ff; top: -0.5em; }
     .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
 
-    /* INPUT */
     .stTextInput > div > div > input {
         text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s;
     }
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
 
-    /* BOTÓN CONSULTAR */
     .stButton > button {
         width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s;
     }
     .stButton > button:hover { background: #e0e0e0; transform: translateY(-1px); }
 
-    /* --- TARJETA --- */
+    /* TARJETA */
     .card-container {
-        border-radius: 20px; 
-        padding: 30px; 
-        color: white;
+        border-radius: 20px; padding: 30px; color: white;
         box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
         position: relative; overflow: hidden; transition: transform 0.3s ease;
         margin: 30px 0; height: 270px;
@@ -100,7 +129,7 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif; 
         backdrop-filter: blur(4px); 
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        margin-right: 2px; /* Pequeño margen para que no se pegue al borde */
+        margin-right: 2px; 
     }
     .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
@@ -118,36 +147,14 @@ st.markdown("""
     .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
     .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
 
-    /* =============================================
-       📱 AJUSTES ESPECIALES PARA CELULAR (Mobile)
-       ============================================= */
+    /* MOBILE ADJUSTMENTS */
     @media only screen and (max-width: 600px) {
-        /* Reducimos el relleno de la caja blanca */
-        .block-container {
-            padding: 2rem 1rem !important; /* Más angosto a los costados */
-            margin-top: 0.5rem;
-        }
-        
-        /* Ajustamos la tarjeta para que entre todo */
-        .card-container {
-            padding: 20px; /* Menos relleno interno */
-            height: 250px; /* Un poquito más baja */
-        }
-        
-        /* Achicamos un poco las fuentes gigantes */
+        .block-container { padding: 2rem 1rem !important; margin-top: 0.5rem; }
+        .card-container { padding: 20px; height: 250px; }
         .card-logo-text { font-size: 20px; }
         .card-name-main { font-size: 22px; }
         .card-balance { font-size: 32px; }
-        
-        /* Ajuste clave para el botón ACTIVO */
-        .status-capsule {
-            padding: 5px 10px;
-            font-size: 10px;
-            /* Margen derecho extra para que el pulso no se corte */
-            margin-right: 5px; 
-        }
-        
-        /* Título principal más chico en celus */
+        .status-capsule { padding: 5px 10px; font-size: 10px; margin-right: 5px; }
         h1 { font-size: 2rem; }
     }
 </style>
@@ -199,7 +206,6 @@ st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu sal
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
-    
     submitted = st.form_submit_button("🔍 CONSULTAR SALDO", use_container_width=True)
 
 if submitted:
@@ -221,6 +227,9 @@ if submitted:
                 if mora > 0:
                      st.error(f"⛔ Tu cuenta tiene {mora} meses de mora.")
                 else:
+                    # ✅ GUARDAMOS EN SHEETS (Silenciosamente)
+                    log_to_sheets(dni_input, nom, estilo['texto_plan'], cupo)
+                    
                     html_raw = f"""
 <div class="card-container" style="background: {estilo['fondo']};">
     <div class="card-top">
@@ -264,3 +273,4 @@ st.markdown("""
     🔒 Sistema seguro de SSServicios
 </div>
 """, unsafe_allow_html=True)
+
