@@ -21,15 +21,14 @@ except:
 # --- FUNCIONES DE REGISTRO EN SHEETS ---
 
 def get_sheet_client():
-    """Conecta con Google Sheets usando los secretos."""
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp_service_account"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client.open("DB_S3Pay").sheet1
 
-def log_consulta(dni, nombre, plan, saldo):
-    """Registra la consulta (Suma +1 en la columna 'Consultas')."""
+def log_consulta(dni, nombre, plan, saldo, email):
+    """Registra la consulta incluyendo el EMAIL."""
     try:
         sheet = get_sheet_client()
         ahora = datetime.datetime.now()
@@ -37,38 +36,35 @@ def log_consulta(dni, nombre, plan, saldo):
         hora_actual = ahora.strftime("%H:%M:%S")
         dni_str = str(dni)
         
-        # Leemos todo para buscar (estrategia de lectura única para velocidad)
         data = sheet.get_all_values()
         
         fila_encontrada = -1
         contador_consultas = 0
-        clicks_actuales = 0 # Preservamos los clicks si existen
         
-        # Buscamos fila coincidente (Saltando encabezado)
+        # Buscamos fila coincidente
         for i, row in enumerate(data):
             if i == 0: continue 
             if len(row) >= 3:
                 if row[0] == fecha_hoy and row[2] == dni_str:
                     fila_encontrada = i + 1
-                    try: contador_consultas = int(row[6])
+                    # Ajustamos índices (Col 8 = Consultas -> indice 7)
+                    try: contador_consultas = int(row[7]) 
                     except: contador_consultas = 0
-                    try: clicks_actuales = int(row[7])
-                    except: clicks_actuales = 0
                     break
         
         if fila_encontrada > 0:
-            # ACTUALIZAR (Upsert)
-            sheet.update_cell(fila_encontrada, 2, hora_actual) # Hora
-            sheet.update_cell(fila_encontrada, 7, contador_consultas + 1) # Suma consulta
+            # ACTUALIZAR (Solo hora y contador)
+            sheet.update_cell(fila_encontrada, 2, hora_actual) 
+            sheet.update_cell(fila_encontrada, 8, contador_consultas + 1)
         else:
-            # INSERTAR NUEVO (Consulta=1, Clicks=0)
-            sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, saldo, 1, 0])
+            # INSERTAR NUEVO
+            sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, saldo, email, 1, 0])
             
     except Exception as e:
         print(f"Error log consulta: {e}")
 
 def log_click(dni):
-    """Registra el clic en el botón de tienda (Suma +1 en 'Clicks_Tienda')."""
+    """Registra el clic en el botón de tienda."""
     try:
         sheet = get_sheet_client()
         ahora = datetime.datetime.now()
@@ -84,17 +80,16 @@ def log_click(dni):
             if len(row) >= 3:
                 if row[0] == fecha_hoy and row[2] == dni_str:
                     fila_encontrada = i + 1
-                    try: contador_clicks = int(row[7]) # Columna 8 (indice 7)
+                    # Col 9 = Clicks (indice 8)
+                    try: contador_clicks = int(row[8])
                     except: contador_clicks = 0
                     break
         
         if fila_encontrada > 0:
-            # Solo actualizamos el click si la fila existe (debería existir porque consultó antes)
-            sheet.update_cell(fila_encontrada, 8, contador_clicks + 1)
+            sheet.update_cell(fila_encontrada, 9, contador_clicks + 1)
         else:
-            # Si por milagro da click sin consulta previa (raro), creamos fila
             hora = ahora.strftime("%H:%M:%S")
-            sheet.append_row([fecha_hoy, hora, dni_str, "Desconocido", "-", 0, 1, 1])
+            sheet.append_row([fecha_hoy, hora, dni_str, "Desconocido", "-", 0, "-", 1, 1])
             
     except Exception as e:
         print(f"Error log click: {e}")
@@ -111,56 +106,21 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     
     .stApp { background: linear-gradient(135deg, #eef2f3 0%, #dce4e8 100%); font-family: 'Montserrat', sans-serif; }
-    
-    .block-container {
-        background-color: #ffffff; padding: 3rem 2rem; border-radius: 25px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 700px; margin-top: 2rem;
-    }
-
+    .block-container { background-color: #ffffff; padding: 3rem 2rem; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 700px; margin-top: 2rem; }
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
-
     h1 { text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; color: #1a1a1a; font-size: 2.5rem; margin-bottom: 0.5rem; letter-spacing: -1px; }
     sup { font-size: 1.2rem; color: #00d4ff; top: -0.5em; }
     .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
-
-    .stTextInput > div > div > input {
-        text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s;
-    }
+    .stTextInput > div > div > input { text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s; }
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
-
-    /* --- BOTÓN CONSULTAR (GRIS) --- */
-    /* Apuntamos específicamente al botón dentro del Formulario */
-    [data-testid="stFormSubmitButton"] button {
-        width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s;
-    }
+    [data-testid="stFormSubmitButton"] button { width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s; }
     [data-testid="stFormSubmitButton"] button:hover { background: #e0e0e0; transform: translateY(-1px); }
-
-    /* --- BOTÓN USAR SALDO (PREMIUM) --- */
-    /* Apuntamos a los botones regulares fuera del form */
-    div.stButton > button:not([kind="secondary"]) {
-        display: block; margin: 20px auto; padding: 18px 25px; width: 100%;
-        text-align: center; text-transform: uppercase; transition: 0.4s; background-size: 200% auto;
-        color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px;
-        border: none; font-size: 16px;
-        background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%);
-        box-shadow: 0 10px 20px rgba(0, 168, 255, 0.3);
-    }
-    div.stButton > button:not([kind="secondary"]):hover {
-        background-position: right center; color: #fff; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 168, 255, 0.5);
-    }
+    div.stButton > button:not([kind="secondary"]) { display: block; margin: 20px auto; padding: 18px 25px; width: 100%; text-align: center; text-transform: uppercase; transition: 0.4s; background-size: 200% auto; color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px; border: none; font-size: 16px; background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%); box-shadow: 0 10px 20px rgba(0, 168, 255, 0.3); }
+    div.stButton > button:not([kind="secondary"]):hover { background-position: right center; color: #fff; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 168, 255, 0.5); }
     div.stButton > button:not([kind="secondary"]):active { transform: scale(0.98); }
-
-    /* TARJETA */
-    .card-container {
-        border-radius: 20px; padding: 30px; color: white;
-        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
-        position: relative; overflow: hidden; transition: transform 0.3s ease;
-        margin: 30px 0; height: 270px;
-        display: flex; flex-direction: column; justify-content: space-between;
-        font-family: 'Montserrat', sans-serif; border: 1px solid rgba(255,255,255,0.15);
-    }
+    .card-container { border-radius: 20px; padding: 30px; color: white; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4); position: relative; overflow: hidden; transition: transform 0.3s ease; margin: 30px 0; height: 270px; display: flex; flex-direction: column; justify-content: space-between; font-family: 'Montserrat', sans-serif; border: 1px solid rgba(255,255,255,0.15); }
     .card-container:hover { transform: translateY(-5px); }
     .card-container::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%); pointer-events: none; }
     .card-top { display: flex; justify-content: space-between; align-items: center; z-index: 2; margin-bottom: 5px;}
@@ -179,11 +139,22 @@ st.markdown("""
     .status-capsule { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.2); padding: 6px 14px; border-radius: 30px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.3); font-family: 'Montserrat', sans-serif; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-right: 2px; }
     .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-    
     .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
     .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
+    
+    /* MENSAJE AMIGABLE DE BLOQUEO */
+    .soft-block-box {
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        margin-top: 20px;
+        color: #495057;
+    }
+    .soft-block-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #212529; }
+    .soft-block-text { font-size: 15px; font-weight: 500; line-height: 1.5; color: #6c757d; }
 
-    /* MOBILE ADJUSTMENTS */
     @media only screen and (max-width: 600px) {
         .block-container { padding: 2rem 1rem !important; margin-top: 0.5rem; }
         .card-container { padding: 20px; height: 250px; }
@@ -236,18 +207,14 @@ def consultar_saldo(dni):
 st.markdown("<h1>S<sup>3</sup> Pay</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
 
-# GESTIÓN DEL ESTADO (Para recordar el usuario después del clic del form)
 if 'cliente_data' not in st.session_state:
     st.session_state.cliente_data = None
-if 'dni_consultado' not in st.session_state:
-    st.session_state.dni_consultado = ""
 
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
     submitted = st.form_submit_button("🔍 CONSULTAR SALDO", use_container_width=True)
 
-# Lógica cuando se envía el formulario
 if submitted:
     if len(dni_input) < 6:
         st.warning("Por favor ingresá un DNI válido.")
@@ -263,32 +230,44 @@ if submitted:
                 except: cupo = 0.0
                 mora = int(cliente.get('cliente_meses_atraso', 0) or 0)
                 
-                # Guardamos en sesión para persistir la tarjeta
+                # Intentamos capturar email
+                email = cliente.get('email') or cliente.get('cliente_email') or cliente.get('mail') or cliente.get('cliente_mail') or "-"
+                
                 estilo = obtener_diseno_tarjeta(cupo)
                 st.session_state.cliente_data = {
-                    "nombre": nom, "cupo": cupo, "mora": mora, "estilo": estilo, "dni": dni_input
+                    "nombre": nom, "cupo": cupo, "mora": mora, "estilo": estilo, "dni": dni_input, "email": email
                 }
                 
                 if mora == 0:
-                    # ✅ LOG CONSULTA (Solo si no tiene mora y es válida)
-                    log_consulta(dni_input, nom, estilo['texto_plan'], cupo)
+                    # LOG SOLO SI NO HAY MORA
+                    log_consulta(dni_input, nom, estilo['texto_plan'], cupo, email)
             else:
                 st.error("❌ No encontramos un cliente con ese DNI.")
                 st.session_state.cliente_data = None
 
-# MOSTRAR TARJETA (Si hay datos en sesión)
+# LOGICA DE VISUALIZACIÓN
 if st.session_state.cliente_data:
     data = st.session_state.cliente_data
     mora = data['mora']
     
     if mora > 0:
-        st.error(f"⛔ Tu cuenta tiene {mora} meses de mora.")
+        # ⚠️ MENSAJE AMABLE EN LUGAR DE ERROR ROJO ⚠️
+        st.markdown("""
+        <div class="soft-block-box">
+            <div class="soft-block-title">¡Hola! 👋</div>
+            <div class="soft-block-text">
+                En este momento no podemos informarte tu cupo disponible.<br>
+                Te sugerimos volver a consultar más adelante.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
     else:
+        # CLIENTE APTO - MOSTRAMOS TARJETA
         estilo = data['estilo']
         cupo = data['cupo']
         nom = data['nombre']
         
-        # HTML TARJETA
         html_raw = f"""
         <div class="card-container" style="background: {estilo['fondo']};">
             <div class="card-top">
@@ -315,12 +294,8 @@ if st.session_state.cliente_data:
         """
         st.markdown(html_raw, unsafe_allow_html=True)
         
-        # BOTÓN DE CLICK (TRACKING)
-        # Usamos un botón de Streamlit para poder ejecutar Python (log_click) antes de redirigir
         if st.button("🛒 USAR MI SALDO AHORA ➜", use_container_width=True):
-            # 1. Registrar el Click
             log_click(data['dni'])
-            # 2. Redirigir usando Javascript
             js = f"window.open('{LINK_TIENDA}', '_blank')"
             html = f"<script>{js}</script>"
             st.components.v1.html(html, height=0)
