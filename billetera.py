@@ -9,7 +9,7 @@ import textwrap
 # ==========================================
 st.set_page_config(page_title="Mi Billetera SSS", page_icon="💳", layout="centered")
 
-# TU CLAVE REAL (Si usas GitHub Secrets, cambialo a st.secrets["ARIA_KEY"])
+# TU CLAVE REAL
 ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
@@ -35,10 +35,12 @@ st.markdown("""
         margin-top: 2rem;
     }
 
-    /* QUITAR BORDE DEL FORMULARIO DE STREAMLIT */
-    [data-testid="stForm"] {
-        border: 0px;
-        padding: 0px;
+    /* QUITAR BORDE DEL FORMULARIO Y MENSAJES MOLESTOS */
+    [data-testid="stForm"] { border: 0px; padding: 0px; }
+    
+    /* 🔥 ESTO BORRA EL TEXTO "Press Enter to apply" 🔥 */
+    [data-testid="InputInstructions"] {
+        display: none !important;
     }
 
     /* TÍTULOS */
@@ -52,7 +54,7 @@ st.markdown("""
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
 
-    /* BOTÓN CONSULTAR (DENTRO DEL FORM) */
+    /* BOTÓN CONSULTAR */
     .stButton > button {
         width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s;
     }
@@ -91,7 +93,7 @@ st.markdown("""
     .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
     
-    /* --- BOTÓN DE COMPRA (USAR SALDO) --- */
+    /* --- BOTÓN DE COMPRA --- */
     .btn-checkout {
         display: block;
         margin: 20px auto;
@@ -172,12 +174,11 @@ def consultar_saldo(dni):
 st.markdown("<h1>💳 Mi Billetera SSS</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
 
-# ⚠️ FORMULARIO PARA HABILITAR ENTER ⚠️
+# ⚠️ FORMULARIO (Enter habilitado, sin mensaje molesto)
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
     
-    # Este botón ahora sirve para enviar el formulario con Click o Enter
     submitted = st.form_submit_button("🔍 CONSULTAR SALDO", use_container_width=True)
 
 if submitted:
