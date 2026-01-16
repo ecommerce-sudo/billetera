@@ -7,7 +7,8 @@ import textwrap
 # ==========================================
 # ⚙️ CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="S3 PAY", page_icon="💳", layout="centered")
+# Aquí cambiamos el nombre de la pestaña del navegador
+st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 
 # TU CLAVE REAL
 ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
@@ -37,14 +38,22 @@ st.markdown("""
 
     /* QUITAR BORDE DEL FORMULARIO Y MENSAJES MOLESTOS */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
-    
-    /* 🔥 ESTO BORRA EL TEXTO "Press Enter to apply" 🔥 */
-    [data-testid="InputInstructions"] {
-        display: none !important;
-    }
+    [data-testid="InputInstructions"] { display: none !important; }
 
     /* TÍTULOS */
-    h1 { text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; color: #1a1a1a; font-size: 2.2rem; margin-bottom: 0.5rem; }
+    h1 { 
+        text-align: center; 
+        font-family: 'Montserrat', sans-serif; 
+        font-weight: 900; 
+        color: #1a1a1a; 
+        font-size: 2.5rem; /* Un poco más grande para el logo */
+        margin-bottom: 0.5rem; 
+        letter-spacing: -1px;
+    }
+    
+    /* Estilo especial para el "3" chiquito */
+    sup { font-size: 1.2rem; color: #00d4ff; top: -0.5em; }
+
     .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
 
     /* INPUT */
@@ -171,10 +180,11 @@ def consultar_saldo(dni):
 # 📱 INTERFAZ PRINCIPAL
 # ==========================================
 
-st.markdown("<h1>💳 Mi Billetera SSS</h1>", unsafe_allow_html=True)
+# TÍTULO PRINCIPAL CON "S AL CUBO"
+st.markdown("<h1>S<sup>3</sup> Pay</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
 
-# ⚠️ FORMULARIO (Enter habilitado, sin mensaje molesto)
+# FORMULARIO
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
@@ -244,4 +254,3 @@ st.markdown("""
     🔒 Sistema seguro de SSServicios
 </div>
 """, unsafe_allow_html=True)
-
