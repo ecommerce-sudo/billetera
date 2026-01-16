@@ -7,7 +7,6 @@ import textwrap
 # ==========================================
 # ⚙️ CONFIGURACIÓN
 # ==========================================
-# Aquí cambiamos el nombre de la pestaña del navegador
 st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 
 # TU CLAVE REAL
@@ -17,7 +16,7 @@ ARIA_URL_BASE = "https://api.anatod.ar/api"
 LINK_TIENDA = "https://ssstore.com.ar" 
 
 # ==========================================
-# 🎨 ESTILOS CSS (DISEÑO FINAL)
+# 🎨 ESTILOS CSS (FINAL MOBILE OPTIMIZED)
 # ==========================================
 st.markdown("""
 <style>
@@ -26,34 +25,26 @@ st.markdown("""
     
     .stApp { background: linear-gradient(135deg, #eef2f3 0%, #dce4e8 100%); font-family: 'Montserrat', sans-serif; }
     
-    /* CAJA PRINCIPAL */
+    /* --- CAJA PRINCIPAL (CONTENEDOR) --- */
     .block-container {
         background-color: #ffffff;
-        padding: 3rem 2rem;
+        padding: 3rem 2rem; /* Padding desktop */
         border-radius: 25px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.08);
         max-width: 700px;
         margin-top: 2rem;
     }
 
-    /* QUITAR BORDE DEL FORMULARIO Y MENSAJES MOLESTOS */
+    /* QUITAR BORDE DEL FORM Y MENSAJES */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
 
     /* TÍTULOS */
     h1 { 
-        text-align: center; 
-        font-family: 'Montserrat', sans-serif; 
-        font-weight: 900; 
-        color: #1a1a1a; 
-        font-size: 2.5rem; /* Un poco más grande para el logo */
-        margin-bottom: 0.5rem; 
-        letter-spacing: -1px;
+        text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; 
+        color: #1a1a1a; font-size: 2.5rem; margin-bottom: 0.5rem; letter-spacing: -1px;
     }
-    
-    /* Estilo especial para el "3" chiquito */
     sup { font-size: 1.2rem; color: #00d4ff; top: -0.5em; }
-
     .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
 
     /* INPUT */
@@ -71,7 +62,9 @@ st.markdown("""
 
     /* --- TARJETA --- */
     .card-container {
-        border-radius: 20px; padding: 30px; color: white;
+        border-radius: 20px; 
+        padding: 30px; 
+        color: white;
         box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
         position: relative; overflow: hidden; transition: transform 0.3s ease;
         margin: 30px 0; height: 270px;
@@ -98,45 +91,65 @@ st.markdown("""
     .card-balance-label { font-size: 10px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; font-weight: 700; margin-bottom: 2px; }
     .card-balance { font-family: 'Inconsolata', monospace; font-size: 38px; font-weight: 700; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.3); letter-spacing: -1px; line-height: 1; }
     
-    .status-capsule { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.2); padding: 6px 14px; border-radius: 30px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.3); font-family: 'Montserrat', sans-serif; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .status-capsule { 
+        display: flex; align-items: center; gap: 8px; 
+        background: rgba(255, 255, 255, 0.2); 
+        padding: 6px 14px; border-radius: 30px; 
+        color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 1px; 
+        border: 1px solid rgba(255, 255, 255, 0.3); 
+        font-family: 'Montserrat', sans-serif; 
+        backdrop-filter: blur(4px); 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        margin-right: 2px; /* Pequeño margen para que no se pegue al borde */
+    }
     .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
     
-    /* --- BOTÓN DE COMPRA --- */
     .btn-checkout {
-        display: block;
-        margin: 20px auto;
-        padding: 18px 25px;
-        width: 100%; max-width: 350px;
-        text-align: center;
-        text-transform: uppercase;
-        transition: 0.4s;
-        background-size: 200% auto;
-        color: white !important; 
-        border-radius: 15px;
-        font-weight: 900; 
-        letter-spacing: 1px;
-        text-decoration: none !important;
-        background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%);
-        box-shadow: 0 10px 20px rgba(0, 168, 255, 0.3);
-        border: none;
-        font-size: 16px;
+        display: block; margin: 20px auto; padding: 18px 25px; width: 100%; max-width: 350px;
+        text-align: center; text-transform: uppercase; transition: 0.4s; background-size: 200% auto;
+        color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px;
+        text-decoration: none !important; background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%);
+        box-shadow: 0 10px 20px rgba(0, 168, 255, 0.3); border: none; font-size: 16px;
     }
-
-    .btn-checkout:hover {
-        background-position: right center;
-        color: #fff;
-        transform: translateY(-3px);
-        box-shadow: 0 15px 30px rgba(0, 168, 255, 0.5);
-    }
-    
+    .btn-checkout:hover { background-position: right center; color: #fff; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 168, 255, 0.5); }
     .btn-checkout:active { transform: scale(0.98); }
 
-    /* TEXTO LEGAL */
     .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
-
-    /* FOOTER */
     .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
+
+    /* =============================================
+       📱 AJUSTES ESPECIALES PARA CELULAR (Mobile)
+       ============================================= */
+    @media only screen and (max-width: 600px) {
+        /* Reducimos el relleno de la caja blanca */
+        .block-container {
+            padding: 2rem 1rem !important; /* Más angosto a los costados */
+            margin-top: 0.5rem;
+        }
+        
+        /* Ajustamos la tarjeta para que entre todo */
+        .card-container {
+            padding: 20px; /* Menos relleno interno */
+            height: 250px; /* Un poquito más baja */
+        }
+        
+        /* Achicamos un poco las fuentes gigantes */
+        .card-logo-text { font-size: 20px; }
+        .card-name-main { font-size: 22px; }
+        .card-balance { font-size: 32px; }
+        
+        /* Ajuste clave para el botón ACTIVO */
+        .status-capsule {
+            padding: 5px 10px;
+            font-size: 10px;
+            /* Margen derecho extra para que el pulso no se corte */
+            margin-right: 5px; 
+        }
+        
+        /* Título principal más chico en celus */
+        h1 { font-size: 2rem; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -180,11 +193,9 @@ def consultar_saldo(dni):
 # 📱 INTERFAZ PRINCIPAL
 # ==========================================
 
-# TÍTULO PRINCIPAL CON "S AL CUBO"
 st.markdown("<h1>S<sup>3</sup> Pay</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
 
-# FORMULARIO
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
@@ -248,7 +259,6 @@ if submitted:
             else:
                 st.error("❌ No encontramos un cliente con ese DNI.")
 
-# Footer Seguro
 st.markdown("""
 <div class="footer-security">
     🔒 Sistema seguro de SSServicios
