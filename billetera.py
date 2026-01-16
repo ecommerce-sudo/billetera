@@ -9,8 +9,8 @@ import textwrap
 # ==========================================
 st.set_page_config(page_title="Mi Billetera SSS", page_icon="💳", layout="centered")
 
-# TU CLAVE REAL
-ARIA_KEY = st.secrets["ARIA_KEY"]
+# TU CLAVE REAL (Si usas GitHub Secrets, cambialo a st.secrets["ARIA_KEY"])
+ARIA_KEY = "mojEu45nVV39nGvDLhChW9MTe2rLmIUi4JZJabUD"
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
 LINK_TIENDA = "https://ssstore.com.ar" 
@@ -35,6 +35,12 @@ st.markdown("""
         margin-top: 2rem;
     }
 
+    /* QUITAR BORDE DEL FORMULARIO DE STREAMLIT */
+    [data-testid="stForm"] {
+        border: 0px;
+        padding: 0px;
+    }
+
     /* TÍTULOS */
     h1 { text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; color: #1a1a1a; font-size: 2.2rem; margin-bottom: 0.5rem; }
     .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
@@ -46,7 +52,7 @@ st.markdown("""
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
 
-    /* BOTÓN CONSULTAR */
+    /* BOTÓN CONSULTAR (DENTRO DEL FORM) */
     .stButton > button {
         width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s;
     }
@@ -85,7 +91,7 @@ st.markdown("""
     .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
     
-    /* --- BOTÓN MEJORADO (SIN EMOJI FEO) --- */
+    /* --- BOTÓN DE COMPRA (USAR SALDO) --- */
     .btn-checkout {
         display: block;
         margin: 20px auto;
@@ -97,7 +103,7 @@ st.markdown("""
         background-size: 200% auto;
         color: white !important; 
         border-radius: 15px;
-        font-weight: 900; /* Letra bien gruesa */
+        font-weight: 900; 
         letter-spacing: 1px;
         text-decoration: none !important;
         background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%);
@@ -116,27 +122,10 @@ st.markdown("""
     .btn-checkout:active { transform: scale(0.98); }
 
     /* TEXTO LEGAL */
-    .legal-text {
-        text-align: center;
-        font-size: 13px; 
-        color: #333; 
-        margin-top: 20px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-    }
+    .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
 
     /* FOOTER */
-    .footer-security {
-        text-align: center; 
-        margin-top: 40px; 
-        font-size: 13px; 
-        color: #555;
-        font-weight: 700;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 6px;
-    }
+    .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -183,10 +172,15 @@ def consultar_saldo(dni):
 st.markdown("<h1>💳 Mi Billetera SSS</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
-dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
+# ⚠️ FORMULARIO PARA HABILITAR ENTER ⚠️
+with st.form("consulta_form"):
+    st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
+    dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
+    
+    # Este botón ahora sirve para enviar el formulario con Click o Enter
+    submitted = st.form_submit_button("🔍 CONSULTAR SALDO", use_container_width=True)
 
-if st.button("🔍 CONSULTAR SALDO", use_container_width=True):
+if submitted:
     if len(dni_input) < 6:
         st.warning("Por favor ingresá un DNI válido.")
     else:
@@ -248,5 +242,4 @@ st.markdown("""
 <div class="footer-security">
     🔒 Sistema seguro de SSServicios
 </div>
-
 """, unsafe_allow_html=True)
