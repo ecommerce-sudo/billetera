@@ -195,55 +195,114 @@ def consultar_saldo(dni):
 # ==========================================
 st.markdown("""
 <style>
+    /* 1. FUENTES */
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@500;700;900&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     
-    .stApp { background: linear-gradient(135deg, #eef2f3 0%, #dce4e8 100%); font-family: 'Montserrat', sans-serif; }
+    /* 2. FONDO GENERAL */
+    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: 'Montserrat', sans-serif; }
     .block-container { background-color: #ffffff; padding: 3rem 2rem; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 700px; margin-top: 2rem; }
+    
+    /* 3. INPUTS Y FORMULARIOS */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
     h1 { text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; color: #1a1a1a; font-size: 2.5rem; margin-bottom: 0.5rem; letter-spacing: -1px; }
-    sup { font-size: 1.2rem; color: #00d4ff; top: -0.5em; }
-    .stMarkdown p { text-align: center !important; color: #666; font-size: 1rem; }
     .stTextInput > div > div > input { text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s; }
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
-    [data-testid="stFormSubmitButton"] button { width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s; }
-    [data-testid="stFormSubmitButton"] button:hover { background: #e0e0e0; transform: translateY(-1px); }
-    div.stButton > button:not([kind="secondary"]) { display: block; margin: 20px auto; padding: 18px 25px; width: 100%; text-align: center; text-transform: uppercase; transition: 0.4s; background-size: 200% auto; color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px; border: none; font-size: 16px; background-image: linear-gradient(to right, #00d4ff 0%, #0984e3 51%, #00d4ff 100%); box-shadow: 0 10px 20px rgba(0, 168, 255, 0.3); }
-    div.stButton > button:not([kind="secondary"]):hover { background-position: right center; color: #fff; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 168, 255, 0.5); }
-    .card-container { border-radius: 20px; padding: 30px; color: white; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4); position: relative; overflow: hidden; transition: transform 0.3s ease; margin: 30px 0; height: 270px; display: flex; flex-direction: column; justify-content: space-between; font-family: 'Montserrat', sans-serif; border: 1px solid rgba(255,255,255,0.15); }
-    .card-container:hover { transform: translateY(-5px); }
-    .card-container::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%); pointer-events: none; }
+    
+    /* 4. BOTÓN DE CONSULTA (GRIS/NEUTRO) */
+    [data-testid="stFormSubmitButton"] button { width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+    [data-testid="stFormSubmitButton"] button:hover { background: #e0e0e0; transform: translateY(-1px); color: #000; }
+
+    /* 5. TARJETA DE CRÉDITO (PREMIUM) */
+    .card-container { 
+        border-radius: 20px; 
+        padding: 30px; 
+        color: white; 
+        /* Sombra difusa para efecto 3D */
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); 
+        position: relative; 
+        overflow: hidden; 
+        transition: transform 0.3s ease; 
+        margin: 30px 0; 
+        height: 270px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: space-between; 
+        font-family: 'Montserrat', sans-serif; 
+        border: 1px solid rgba(255,255,255,0.1); 
+    }
+    .card-container:hover { transform: translateY(-5px) scale(1.01); }
+    
+    /* Brillo superior tipo "vidrio" */
+    .card-container::before { 
+        content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; 
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); 
+        pointer-events: none; 
+    }
+
     .card-top { display: flex; justify-content: space-between; align-items: center; z-index: 2; margin-bottom: 5px;}
-    .card-logo-text { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.2); line-height: 1; }
-    .plan-label { font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3); opacity: 0.9; }
-    .card-chip { width: 55px; height: 40px; background: linear-gradient(135deg, #e0aa3e 0%, #fdd835 100%); border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 1px solid #b88a00; z-index: 2; position: absolute; top: 90px; right: 35px; }
+    .card-logo-text { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -1px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .plan-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; opacity: 0.8; }
+
+    /* CHIP METÁLICO (Degradado Dorado) */
+    .card-chip { 
+        width: 55px; height: 40px; 
+        background: linear-gradient(135deg, #fce38a 0%, #f38181 100%); /* Efecto metal */
+        border-radius: 6px; overflow: hidden; 
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+        z-index: 2; position: absolute; top: 90px; right: 35px; 
+    }
     .card-chip::before { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(0,0,0,0.15); transform: translateY(-50%); }
     .card-chip::after { content: ""; position: absolute; top: 0; left: 33%; width: 1px; height: 100%; background: rgba(0,0,0,0.15); }
     .chip-line-v2 { position: absolute; top: 0; left: 66%; width: 1px; height: 100%; background: rgba(0,0,0,0.15); }
-    .chip-curve { position: absolute; top: 50%; left: 50%; width: 25px; height: 25px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; transform: translate(-50%, -50%); }
+
+    /* DATOS DEL CLIENTE (Fuente Monospaced tipo Ticket) */
     .card-middle { margin-top: 25px; margin-bottom: 15px; z-index: 2; }
-    .card-name-main { font-family: 'Inconsolata', monospace; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-name-main { 
+        font-family: 'Inconsolata', monospace; /* FUENTE BANCARIA */
+        font-size: 24px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; 
+        text-shadow: 0 2px 2px rgba(0,0,0,0.3); 
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    }
+
     .card-footer { display: flex; justify-content: space-between; align-items: flex-end; z-index: 2; margin-top: auto; }
-    .card-balance-label { font-size: 10px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; font-weight: 700; margin-bottom: 2px; }
-    .card-balance { font-family: 'Inconsolata', monospace; font-size: 38px; font-weight: 700; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.3); letter-spacing: -1px; line-height: 1; }
-    .status-capsule { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.2); padding: 6px 14px; border-radius: 30px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.3); font-family: 'Montserrat', sans-serif; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-right: 2px; }
-    .dot { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-    .soft-block-box { background-color: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 25px; text-align: center; margin-top: 20px; color: #495057; }
-    .soft-block-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #212529; }
-    .soft-block-text { font-size: 15px; font-weight: 500; line-height: 1.5; color: #6c757d; }
-    .legal-text { text-align: center; font-size: 13px; color: #333; margin-top: 20px; font-weight: 700; letter-spacing: 0.5px; }
-    .footer-security { text-align: center; margin-top: 40px; font-size: 13px; color: #555; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; }
+    .card-balance-label { font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; margin-bottom: 4px; }
+    .card-balance { 
+        font-family: 'Inconsolata', monospace; /* FUENTE BANCARIA */
+        font-size: 42px; font-weight: 700; text-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+        letter-spacing: -1px; line-height: 1; 
+    }
+
+    .status-capsule { display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.2); }
+    .dot { width: 6px; height: 6px; background-color: #4ade80; border-radius: 50%; box-shadow: 0 0 8px #4ade80; }
+
+    /* 6. BOTÓN "USAR SALDO" (CTA DESTACADO) */
+    div.stButton > button:not([kind="secondary"]) { 
+        display: block; margin: 25px auto; padding: 18px 25px; width: 100%; text-align: center; 
+        text-transform: uppercase; transition: 0.4s; 
+        color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px; border: none; font-size: 18px; 
+        /* Degradado llamativo (Cyan a Azul) */
+        background-image: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%); 
+        box-shadow: 0 10px 25px rgba(0, 201, 255, 0.4); 
+    }
+    div.stButton > button:not([kind="secondary"]):hover { 
+        transform: translateY(-3px) scale(1.02); 
+        box-shadow: 0 15px 35px rgba(0, 201, 255, 0.6); 
+    }
+
+    /* MENSAJES EXTRA */
+    .fallback-msg { text-align: center; margin-top: 15px; font-size: 14px; background: #e3f2fd; padding: 10px; border-radius: 10px; border: 1px solid #90caf9; color: #1565c0; }
+    .fallback-msg a { font-weight: bold; color: #0d47a1; text-decoration: underline; }
+    .legal-text { text-align: center; font-size: 12px; color: #999; margin-top: 25px; font-weight: 600; }
+    .footer-security { text-align: center; margin-top: 40px; font-size: 12px; color: #bbb; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px; }
+    
     @media only screen and (max-width: 600px) {
-        .block-container { padding: 2rem 1rem !important; margin-top: 0.5rem; }
-        .card-container { padding: 20px; height: 250px; }
-        .card-logo-text { font-size: 20px; }
-        .card-name-main { font-size: 22px; }
-        .card-balance { font-size: 32px; }
-        .status-capsule { padding: 5px 10px; font-size: 10px; margin-right: 5px; }
-        h1 { font-size: 2rem; }
+        .block-container { padding: 2rem 1rem !important; }
+        .card-container { padding: 20px; height: 240px; }
+        .card-name-main { font-size: 20px; }
+        .card-balance { font-size: 34px; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -346,3 +405,4 @@ if st.session_state.cliente_data:
         st.markdown('<div class="legal-text">* Al finalizar tu compra elegí la opción "A Convenir"</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="footer-security">🔒 Sistema seguro de SSServicios</div>', unsafe_allow_html=True)
+
