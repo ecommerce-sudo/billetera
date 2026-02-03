@@ -4,20 +4,22 @@ import re
 import time
 import datetime
 import gspread
-import json # <--- NECESARIO PARA RENDER
-import os   # <--- NECESARIO PARA RENDER
+import json
+import os
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit.components.v1 as components
 
 # ==========================================
-# ⚙️ CONFIGURACIÓN
+# ⚙️ CONFIGURACIÓN ROBUSTA (RENDER VS STREAMLIT)
 # ==========================================
 st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 
-# Lógica robusta para obtener la API KEY (Streamlit Cloud vs Render)
-if "ARIA_KEY" in st.secrets:
+# INTENTO 1: Buscar en Secrets (Streamlit Cloud)
+# INTENTO 2: Si falla, buscar en Variables de Entorno (Render)
+try:
     ARIA_KEY = st.secrets["ARIA_KEY"]
-else:
+except:
+    # Si estamos en Render, st.secrets fallará. Usamos os.getenv
     ARIA_KEY = os.getenv("ARIA_KEY")
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
@@ -29,20 +31,24 @@ LINK_TIENDA = "https://ssstore.com.ar"
 def get_sheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # Lógica para leer credenciales de Google
-    if "gcp_service_account" in st.secrets:
-        # Estamos en Streamlit Cloud (formato diccionario nativo)
+    creds_dict = None
+    
+    # 1. Intentamos leer de Streamlit Secrets (Cloud)
+    try:
         creds_dict = st.secrets["gcp_service_account"]
-    else:
-        # Estamos en Render (formato string JSON en variable de entorno)
+    except:
+        pass # No estamos en Streamlit Cloud o no hay secrets file
+
+    # 2. Si falló lo anterior, leemos de Render Env Vars
+    if not creds_dict:
         json_creds = os.getenv("GOOGLE_CREDENTIALS")
         if not json_creds:
-            st.error("⚠️ Error de Configuración: No se encontró la variable GOOGLE_CREDENTIALS en Render.")
+            st.error("⚠️ Error Crítico: No se encontraron credenciales (ni en Secrets ni en Render ENV).")
             st.stop()
         try:
             creds_dict = json.loads(json_creds)
         except json.JSONDecodeError:
-            st.error("⚠️ Error de Formato: La variable GOOGLE_CREDENTIALS no es un JSON válido.")
+            st.error("⚠️ Error de Formato: La variable GOOGLE_CREDENTIALS en Render no es un JSON válido.")
             st.stop()
 
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -61,31 +67,24 @@ def log_consulta(dni, nombre, plan, saldo, email):
         fila_encontrada = -1
         contador_consultas = 0
         
-        # Buscamos si ya existe hoy
         for i, row in enumerate(data):
             if i == 0: continue
             if len(row) >= 3:
-                # Comparamos Fecha (Col 0) y DNI (Col 2)
                 if row[0] == fecha_hoy and row[2] == dni_str:
                     fila_encontrada = i + 1
-                    # En tu Excel: Col H (Consultas) es la columna 8 (indice 7)
                     try: contador_consultas = int(row[7]) 
                     except: contador_consultas = 0
                     break
         
         if fila_encontrada > 0:
-            # ACTUALIZAR SI YA EXISTE
-            sheet.update_cell(fila_encontrada, 2, hora_actual) # Actualiza Hora (Col B)
-            sheet.update_cell(fila_encontrada, 8, contador_consultas + 1) # Actualiza Consultas (Col H)
+            sheet.update_cell(fila_encontrada, 2, hora_actual) 
+            sheet.update_cell(fila_encontrada, 8, contador_consultas + 1) 
             
-            # Si recuperamos un email y en el excel estaba vacio o con guion, lo actualizamos
             if email != "-" and len(row) > 5:
-                 val_actual = row[5] # Indice 5 es Columna 6
+                 val_actual = row[5] 
                  if val_actual == "-" or val_actual == "":
                      sheet.update_cell(fila_encontrada, 6, email)
         else:
-            # INSERTAR NUEVO
-            # Fecha, Hora, DNI, Nombre, Plan, EMAIL, SALDO, Consultas, Clicks
             sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, email, saldo, 1, 0])
             
     except Exception as e:
@@ -120,7 +119,7 @@ def log_click(dni):
         print(f"Error log click: {e}")
 
 # ==========================================
-# 🧠 LÓGICA DE NEGOCIO (DIAGNÓSTICO ARIA)
+# 🧠 LÓGICA DE NEGOCIO + DIAGNÓSTICO
 # ==========================================
 def solo_numeros(texto):
     return re.sub(r'\D', '', str(texto))
@@ -131,9 +130,6 @@ def obtener_diseno_tarjeta(cupo):
     else: return {"fondo": "linear-gradient(135deg, #232526 0%, #414345 100%)", "texto_plan": "BLACK"} 
 
 def consultar_saldo(dni):
-    """
-    Función mejorada con diagnóstico para detectar errores en Render.
-    """
     if not ARIA_KEY:
         st.error("❌ ERROR CRÍTICO: No se detectó la variable ARIA_KEY.")
         return None
@@ -143,10 +139,9 @@ def consultar_saldo(dni):
     
     cliente_encontrado = None
     
-    # --- INTENTO 1: Búsqueda exacta por 'ident' ---
+    # INTENTO 1
     try:
         res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'ident': dni_limpio}, timeout=8)
-        
         if res.status_code == 200:
             d = res.json()
             lista = d if isinstance(d, list) else [d]
@@ -160,11 +155,10 @@ def consultar_saldo(dni):
         elif res.status_code == 403:
             st.error("❌ Error 403: Acceso prohibido a la API.")
             return None
-            
     except Exception as e:
         st.warning(f"⚠️ Alerta: Falló conexión primaria ({str(e)})")
 
-    # --- INTENTO 2: Búsqueda amplia por 'q' (si falló la 1) ---
+    # INTENTO 2
     if not cliente_encontrado:
         try:
             res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'q': dni_limpio}, timeout=8)
@@ -178,7 +172,7 @@ def consultar_saldo(dni):
         except Exception as e:
             st.warning(f"⚠️ Alerta: Falló conexión secundaria ({str(e)})")
 
-    # --- RECUPERACIÓN DE EMAIL ---
+    # EMAIL
     if cliente_encontrado:
         email_recuperado = "-"
         try:
@@ -191,8 +185,7 @@ def consultar_saldo(dni):
                     if lista_emails and len(lista_emails) > 0:
                         email_recuperado = lista_emails[0].get('cliente_mail_mail', '-')
         except:
-            pass # Si falla el email no es crítico
-        
+            pass 
         cliente_encontrado['email_final'] = email_recuperado
             
     return cliente_encontrado
@@ -276,7 +269,7 @@ if submitted:
     else:
         with st.spinner("Procesando consulta..."):
             time.sleep(0.5)
-            # 1. Buscamos cliente con la lógica mejorada de diagnóstico
+            # 1. Buscamos cliente con la lógica mejorada
             cliente = consultar_saldo(dni_input)
             
             if cliente:
@@ -285,7 +278,6 @@ if submitted:
                 except: cupo = 0.0
                 mora = int(cliente.get('cliente_meses_atraso', 0) or 0)
                 
-                # 2. Recuperamos el email que la función 'consultar_saldo' encontró
                 email = cliente.get('email_final', '-')
                 
                 estilo = obtener_diseno_tarjeta(cupo)
