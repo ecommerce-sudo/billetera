@@ -10,7 +10,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import streamlit.components.v1 as components
 
 # ==========================================
-# ⚙️ CONFIGURACIÓN ROBUSTA (RENDER VS STREAMLIT)
+# ⚙️ CONFIGURACIÓN ROBUSTA
 # ==========================================
 st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 
@@ -19,7 +19,6 @@ st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
 try:
     ARIA_KEY = st.secrets["ARIA_KEY"]
 except:
-    # Si estamos en Render, st.secrets fallará. Usamos os.getenv
     ARIA_KEY = os.getenv("ARIA_KEY")
 
 ARIA_URL_BASE = "https://api.anatod.ar/api"
@@ -30,25 +29,24 @@ LINK_TIENDA = "https://ssstore.com.ar"
 # ==========================================
 def get_sheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    
     creds_dict = None
     
     # 1. Intentamos leer de Streamlit Secrets (Cloud)
     try:
         creds_dict = st.secrets["gcp_service_account"]
     except:
-        pass # No estamos en Streamlit Cloud o no hay secrets file
+        pass 
 
     # 2. Si falló lo anterior, leemos de Render Env Vars
     if not creds_dict:
         json_creds = os.getenv("GOOGLE_CREDENTIALS")
         if not json_creds:
-            st.error("⚠️ Error Crítico: No se encontraron credenciales (ni en Secrets ni en Render ENV).")
+            st.error("⚠️ Error Crítico: No se encontraron credenciales.")
             st.stop()
         try:
             creds_dict = json.loads(json_creds)
         except json.JSONDecodeError:
-            st.error("⚠️ Error de Formato: La variable GOOGLE_CREDENTIALS en Render no es un JSON válido.")
+            st.error("⚠️ Error de Formato: JSON de Google inválido.")
             st.stop()
 
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -79,14 +77,12 @@ def log_consulta(dni, nombre, plan, saldo, email):
         if fila_encontrada > 0:
             sheet.update_cell(fila_encontrada, 2, hora_actual) 
             sheet.update_cell(fila_encontrada, 8, contador_consultas + 1) 
-            
             if email != "-" and len(row) > 5:
                  val_actual = row[5] 
                  if val_actual == "-" or val_actual == "":
                      sheet.update_cell(fila_encontrada, 6, email)
         else:
             sheet.append_row([fecha_hoy, hora_actual, dni_str, nombre, plan, email, saldo, 1, 0])
-            
     except Exception as e:
         print(f"Error log consulta: {e}")
 
@@ -114,12 +110,11 @@ def log_click(dni):
         else:
             hora = ahora.strftime("%H:%M:%S")
             sheet.append_row([fecha_hoy, hora, dni_str, "Desconocido", "-", "-", 0, 1, 1])
-            
     except Exception as e:
         print(f"Error log click: {e}")
 
 # ==========================================
-# 🧠 LÓGICA DE NEGOCIO + DIAGNÓSTICO
+# 🧠 LÓGICA DE NEGOCIO + CACHÉ
 # ==========================================
 def solo_numeros(texto):
     return re.sub(r'\D', '', str(texto))
@@ -129,19 +124,16 @@ def obtener_diseno_tarjeta(cupo):
     elif cupo < 500000: return {"fondo": "linear-gradient(135deg, #1A2980 0%, #26D0CE 100%)", "texto_plan": "CLASSIC"} 
     else: return {"fondo": "linear-gradient(135deg, #232526 0%, #414345 100%)", "texto_plan": "BLACK"} 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def consultar_saldo(dni):
-    if not ARIA_KEY:
-        st.error("❌ ERROR CRÍTICO: No se detectó la variable ARIA_KEY.")
-        return None
-    
+    if not ARIA_KEY: return None
     headers = {"x-api-key": ARIA_KEY}
     dni_limpio = solo_numeros(dni)
-    
     cliente_encontrado = None
     
     # INTENTO 1
     try:
-        res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'ident': dni_limpio}, timeout=8)
+        res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'ident': dni_limpio}, timeout=6)
         if res.status_code == 200:
             d = res.json()
             lista = d if isinstance(d, list) else [d]
@@ -149,19 +141,12 @@ def consultar_saldo(dni):
                 if dni_limpio in solo_numeros(c.get('cliente_dnicuit','')): 
                     cliente_encontrado = c
                     break
-        elif res.status_code == 401:
-            st.error("❌ Error 401: API Key rechazada. Verificá ARIA_KEY en Render.")
-            return None
-        elif res.status_code == 403:
-            st.error("❌ Error 403: Acceso prohibido a la API.")
-            return None
-    except Exception as e:
-        st.warning(f"⚠️ Alerta: Falló conexión primaria ({str(e)})")
+    except: pass
 
     # INTENTO 2
     if not cliente_encontrado:
         try:
-            res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'q': dni_limpio}, timeout=8)
+            res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'q': dni_limpio}, timeout=6)
             if res.status_code == 200:
                 d = res.json()
                 lista = d['data'] if isinstance(d, dict) and 'data' in d else (d if isinstance(d, list) else [d])
@@ -169,8 +154,7 @@ def consultar_saldo(dni):
                     if dni_limpio in solo_numeros(c.get('cliente_dnicuit','')): 
                         cliente_encontrado = c
                         break
-        except Exception as e:
-            st.warning(f"⚠️ Alerta: Falló conexión secundaria ({str(e)})")
+        except: pass
 
     # EMAIL
     if cliente_encontrado:
@@ -184,26 +168,31 @@ def consultar_saldo(dni):
                     lista_emails = data_email.get('cliente_emails', [])
                     if lista_emails and len(lista_emails) > 0:
                         email_recuperado = lista_emails[0].get('cliente_mail_mail', '-')
-        except:
-            pass 
+        except: pass 
         cliente_encontrado['email_final'] = email_recuperado
             
     return cliente_encontrado
 
 # ==========================================
-# 🎨 ESTILOS CSS
+# 🎨 ESTILOS CSS (DISEÑO FINAL)
 # ==========================================
 st.markdown("""
 <style>
-    /* 1. FUENTES */
+    /* 1. OCULTAR MENÚ DE STREAMLIT Y FOOTER (LIMPIEZA TOTAL) */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stToolbar"] {display: none;} /* Refuerzo para versiones nuevas */
+
+    /* 2. FUENTES */
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@500;700;900&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     
-    /* 2. FONDO GENERAL */
+    /* 3. FONDO GENERAL */
     .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: 'Montserrat', sans-serif; }
     .block-container { background-color: #ffffff; padding: 3rem 2rem; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 700px; margin-top: 2rem; }
     
-    /* 3. INPUTS Y TITULOS */
+    /* 4. INPUTS Y TITULOS */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
     
@@ -213,17 +202,17 @@ st.markdown("""
     h1 sup { color: #00d4ff; font-size: 1.5rem; top: -0.5em; }
     
     /* Subtítulo centrado */
-    .subtitle-text { text-align: center !important; color: #666; font-size: 1rem; margin-bottom: 25px; display: block; }
+    .subtitle-text { text-align: center !important; color: #666; font-size: 1rem; margin-bottom: 25px; display: block; font-weight: 500; }
 
     .stTextInput > div > div > input { text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s; }
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
     
-    /* 4. BOTONES */
+    /* 5. BOTONES */
     [data-testid="stFormSubmitButton"] button { width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
     [data-testid="stFormSubmitButton"] button:hover { background: #e0e0e0; transform: translateY(-1px); color: #000; }
 
-    /* 5. TARJETA DE CRÉDITO (PREMIUM) */
+    /* 6. TARJETA DE CRÉDITO (PREMIUM) */
     .card-container { 
         border-radius: 20px; 
         padding: 30px; 
@@ -259,7 +248,7 @@ st.markdown("""
     .status-capsule { display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.2); }
     .dot { width: 6px; height: 6px; background-color: #4ade80; border-radius: 50%; box-shadow: 0 0 8px #4ade80; }
 
-    /* 6. BOTÓN LINK */
+    /* 7. BOTÓN LINK */
     a[target="_blank"] { width: 100%; }
     div[data-testid="stLinkButton"] > a {
         display: block; margin: 25px auto; padding: 18px 25px; width: 100%; text-align: center; 
@@ -284,11 +273,14 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 # ==========================================
 # 📱 INTERFAZ PRINCIPAL
 # ==========================================
 st.markdown("<h1>S<sup>3</sup> Pay</h1>", unsafe_allow_html=True)
-st.markdown("<p style='margin-bottom: 25px;'>Ingresá tu DNI para conocer tu saldo disponible.</p>", unsafe_allow_html=True)
+
+# Subtítulo con clase específica para centrado
+st.markdown("<div class='subtitle-text'>Ingresá tu DNI para conocer tu saldo disponible.</div>", unsafe_allow_html=True)
 
 if 'cliente_data' not in st.session_state:
     st.session_state.cliente_data = None
@@ -304,8 +296,6 @@ if submitted:
         st.session_state.cliente_data = None
     else:
         with st.spinner("Procesando consulta..."):
-            time.sleep(0.5)
-            # 1. Buscamos cliente con la lógica mejorada
             cliente = consultar_saldo(dni_input)
             
             if cliente:
@@ -313,7 +303,6 @@ if submitted:
                 try: cupo = float(cliente.get('clienteScoringFinanciable', 0))
                 except: cupo = 0.0
                 mora = int(cliente.get('cliente_meses_atraso', 0) or 0)
-                
                 email = cliente.get('email_final', '-')
                 
                 estilo = obtener_diseno_tarjeta(cupo)
@@ -373,14 +362,22 @@ if st.session_state.cliente_data:
         """
         st.markdown(html_raw, unsafe_allow_html=True)
         
+        # LÓGICA DE BOTÓN HÍBRIDO (TRACKING + REDIRECT)
         if st.button("🛒 USAR MI SALDO AHORA ➜", use_container_width=True):
             log_click(data['dni'])
             js = f"window.open('{LINK_TIENDA}', '_blank')"
             html = f"<script>{js}</script>"
             st.components.v1.html(html, height=0)
             
+            st.success("✅ Redirigiendo a la tienda...")
+            st.markdown(f"""
+            <div class='fallback-msg'>
+                ⚠️ ¿No se abrió la tienda?<br>
+                Posiblemente tu navegador bloqueó la ventana emergente.<br>
+                <a href='{LINK_TIENDA}' target='_blank'>👉 HACÉ CLIC ACÁ PARA ENTRAR MANUALMENTE</a>
+            </div>
+            """, unsafe_allow_html=True)
+            
         st.markdown('<div class="legal-text">* Al finalizar tu compra elegí la opción "A Convenir"</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="footer-security">🔒 Sistema seguro de SSServicios</div>', unsafe_allow_html=True)
-
-
