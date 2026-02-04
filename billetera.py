@@ -12,10 +12,8 @@ import streamlit.components.v1 as components
 # ==========================================
 # ⚙️ CONFIGURACIÓN ROBUSTA
 # ==========================================
-st.set_page_config(page_title="S³ Pay", page_icon="💳", layout="centered")
+st.set_page_config(page_title="S³ Beneficios", page_icon="🎁", layout="centered")
 
-# INTENTO 1: Buscar en Secrets (Streamlit Cloud)
-# INTENTO 2: Si falla, buscar en Variables de Entorno (Render)
 try:
     ARIA_KEY = st.secrets["ARIA_KEY"]
 except:
@@ -31,13 +29,11 @@ def get_sheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = None
     
-    # 1. Intentamos leer de Streamlit Secrets (Cloud)
     try:
         creds_dict = st.secrets["gcp_service_account"]
     except:
         pass 
 
-    # 2. Si falló lo anterior, leemos de Render Env Vars
     if not creds_dict:
         json_creds = os.getenv("GOOGLE_CREDENTIALS")
         if not json_creds:
@@ -131,7 +127,6 @@ def consultar_saldo(dni):
     dni_limpio = solo_numeros(dni)
     cliente_encontrado = None
     
-    # INTENTO 1
     try:
         res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'ident': dni_limpio}, timeout=6)
         if res.status_code == 200:
@@ -143,7 +138,6 @@ def consultar_saldo(dni):
                     break
     except: pass
 
-    # INTENTO 2
     if not cliente_encontrado:
         try:
             res = requests.get(f"{ARIA_URL_BASE}/clientes", headers=headers, params={'q': dni_limpio}, timeout=6)
@@ -156,7 +150,6 @@ def consultar_saldo(dni):
                         break
         except: pass
 
-    # EMAIL
     if cliente_encontrado:
         email_recuperado = "-"
         try:
@@ -174,50 +167,39 @@ def consultar_saldo(dni):
     return cliente_encontrado
 
 # ==========================================
-# 🎨 ESTILOS CSS (DISEÑO FINAL)
+# 🎨 ESTILOS CSS
 # ==========================================
 st.markdown("""
 <style>
-    /* 1. OCULTAR MENÚ DE STREAMLIT Y FOOTER (LIMPIEZA TOTAL) */
+    /* OCULTAR MENÚ */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    [data-testid="stToolbar"] {display: none;} /* Refuerzo para versiones nuevas */
+    [data-testid="stToolbar"] {display: none;}
 
-    /* 2. FUENTES */
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@500;700;900&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
     
-    /* 3. FONDO GENERAL */
     .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: 'Montserrat', sans-serif; }
     .block-container { background-color: #ffffff; padding: 3rem 2rem; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 700px; margin-top: 2rem; }
     
-    /* 4. INPUTS Y TITULOS */
     [data-testid="stForm"] { border: 0px; padding: 0px; }
     [data-testid="InputInstructions"] { display: none !important; }
     
-    /* Título S3 Pay */
     h1 { text-align: center; font-family: 'Montserrat', sans-serif; font-weight: 900; color: #1a1a1a; font-size: 2.5rem; margin-bottom: 0.5rem; letter-spacing: -1px; }
-    /* EL 3 CELESTE */
     h1 sup { color: #00d4ff; font-size: 1.5rem; top: -0.5em; }
     
-    /* Subtítulo centrado */
-    .subtitle-text { text-align: center !important; color: #666; font-size: 1rem; margin-bottom: 25px; display: block; font-weight: 500; }
+    .subtitle-text { text-align: center !important; color: #666; font-size: 1rem; margin-bottom: 25px; display: block; font-weight: 500; line-height: 1.5; }
 
     .stTextInput > div > div > input { text-align: center; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; transition: all 0.3s; }
     .stTextInput > div > div > input:focus { border-color: #00d4ff; box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1); }
     .stTextInput label { display: none; }
     
-    /* 5. BOTONES */
     [data-testid="stFormSubmitButton"] button { width: 100%; border-radius: 12px; padding: 12px; font-weight: 700; border: none; background: #f4f6f8; color: #555; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
     [data-testid="stFormSubmitButton"] button:hover { background: #e0e0e0; transform: translateY(-1px); color: #000; }
 
-    /* 6. TARJETA DE CRÉDITO (PREMIUM) */
     .card-container { 
-        border-radius: 20px; 
-        padding: 30px; 
-        color: white; 
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); 
+        border-radius: 20px; padding: 30px; color: white; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); 
         position: relative; overflow: hidden; transition: transform 0.3s ease; 
         margin: 30px 0; height: 270px; display: flex; flex-direction: column; justify-content: space-between; 
         font-family: 'Montserrat', sans-serif; border: 1px solid rgba(255,255,255,0.1); 
@@ -229,11 +211,7 @@ st.markdown("""
     .card-logo-text { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -1px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .plan-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; opacity: 0.8; }
 
-    .card-chip { 
-        width: 55px; height: 40px; background: linear-gradient(135deg, #fce38a 0%, #f38181 100%);
-        border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
-        z-index: 2; position: absolute; top: 90px; right: 35px; 
-    }
+    .card-chip { width: 55px; height: 40px; background: linear-gradient(135deg, #fce38a 0%, #f38181 100%); border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); z-index: 2; position: absolute; top: 90px; right: 35px; }
     .card-chip::before { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(0,0,0,0.15); transform: translateY(-50%); }
     .card-chip::after { content: ""; position: absolute; top: 0; left: 33%; width: 1px; height: 100%; background: rgba(0,0,0,0.15); }
     .chip-line-v2 { position: absolute; top: 0; left: 66%; width: 1px; height: 100%; background: rgba(0,0,0,0.15); }
@@ -248,23 +226,20 @@ st.markdown("""
     .status-capsule { display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.2); }
     .dot { width: 6px; height: 6px; background-color: #4ade80; border-radius: 50%; box-shadow: 0 0 8px #4ade80; }
 
-    /* 7. BOTÓN LINK */
     a[target="_blank"] { width: 100%; }
-    div[data-testid="stLinkButton"] > a {
-        display: block; margin: 25px auto; padding: 18px 25px; width: 100%; text-align: center; 
-        text-transform: uppercase; transition: 0.4s; color: white !important; border-radius: 15px; 
-        font-weight: 900; letter-spacing: 1px; border: none; font-size: 18px; text-decoration: none;
-        background-image: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%); 
-        box-shadow: 0 10px 25px rgba(0, 201, 255, 0.4); 
-    }
+    div[data-testid="stLinkButton"] > a { display: block; margin: 25px auto; padding: 18px 25px; width: 100%; text-align: center; text-transform: uppercase; transition: 0.4s; color: white !important; border-radius: 15px; font-weight: 900; letter-spacing: 1px; border: none; font-size: 18px; text-decoration: none; background-image: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%); box-shadow: 0 10px 25px rgba(0, 201, 255, 0.4); }
     div[data-testid="stLinkButton"] > a:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 35px rgba(0, 201, 255, 0.6); }
 
     .soft-block-box { background-color: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 25px; text-align: center; margin-top: 20px; color: #495057; }
     .soft-block-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #212529; }
     .soft-block-text { font-size: 15px; font-weight: 500; line-height: 1.5; color: #6c757d; }
-    .legal-text { text-align: center; font-size: 12px; color: #999; margin-top: 25px; font-weight: 600; }
-    .footer-security { text-align: center; margin-top: 40px; font-size: 12px; color: #bbb; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px; }
     
+    .instruction-text { text-align: center; font-size: 13px; color: #333; margin-top: 25px; font-weight: 500; line-height: 1.5; background: #e8f4fd; padding: 10px; border-radius: 10px; border: 1px solid #bce0fd; }
+    .scoring-legales { text-align: center; font-size: 11px; color: #999; margin-top: 30px; font-weight: 400; padding: 0 10px; }
+    .footer-security { text-align: center; margin-top: 15px; font-size: 12px; color: #bbb; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px; }
+    .fallback-msg { text-align: center; margin-top: 15px; font-size: 14px; background: #e3f2fd; padding: 10px; border-radius: 10px; border: 1px solid #90caf9; color: #1565c0; }
+    .fallback-msg a { font-weight: bold; color: #0d47a1; text-decoration: underline; }
+
     @media only screen and (max-width: 600px) {
         .block-container { padding: 2rem 1rem !important; }
         .card-container { padding: 20px; height: 240px; }
@@ -277,10 +252,10 @@ st.markdown("""
 # ==========================================
 # 📱 INTERFAZ PRINCIPAL
 # ==========================================
-st.markdown("<h1>S<sup>3</sup> Pay</h1>", unsafe_allow_html=True)
+st.markdown("<h1>S<sup>3</sup> Beneficios</h1>", unsafe_allow_html=True)
 
-# Subtítulo con clase específica para centrado
-st.markdown("<div class='subtitle-text'>Ingresá tu DNI para conocer tu saldo disponible.</div>", unsafe_allow_html=True)
+# SUBTÍTULO CON 3 CUOTAS SIN INTERES (DESTACADO)
+st.markdown("<div class='subtitle-text'>Descubrí tu límite asignado y usalo para financiar tus compras en <b>SSStore</b> en <b>3 cuotas sin interés</b>.</div>", unsafe_allow_html=True)
 
 if 'cliente_data' not in st.session_state:
     st.session_state.cliente_data = None
@@ -288,14 +263,15 @@ if 'cliente_data' not in st.session_state:
 with st.form("consulta_form"):
     st.markdown("<p style='text-align: center; font-weight: 800; font-size: 12px; margin-bottom: 5px; color:#333;'>DNI DEL TITULAR</p>", unsafe_allow_html=True)
     dni_input = st.text_input("DNI", max_chars=12, placeholder="Ej: 30123456", label_visibility="collapsed")
-    submitted = st.form_submit_button("🔍 CONSULTAR SALDO", use_container_width=True)
+    # BOTÓN LIMPIO Y DIRECTO
+    submitted = st.form_submit_button("🔍 CONSULTAR BENEFICIO", use_container_width=True)
 
 if submitted:
     if len(dni_input) < 6:
         st.warning("Por favor ingresá un DNI válido.")
         st.session_state.cliente_data = None
     else:
-        with st.spinner("Procesando consulta..."):
+        with st.spinner("Buscando beneficios disponibles..."):
             cliente = consultar_saldo(dni_input)
             
             if cliente:
@@ -313,7 +289,7 @@ if submitted:
                 if mora == 0:
                     log_consulta(dni_input, nom, estilo['texto_plan'], cupo, email)
             else:
-                st.error("❌ No encontramos un cliente con ese DNI.")
+                st.error("❌ No encontramos beneficios activos para este DNI.")
                 st.session_state.cliente_data = None
 
 # LOGICA DE VISUALIZACIÓN
@@ -326,7 +302,7 @@ if st.session_state.cliente_data:
         <div class="soft-block-box">
             <div class="soft-block-title">¡Hola! 👋</div>
             <div class="soft-block-text">
-                En este momento no tenes cupo disponible.<br>
+                En este momento no tenes límite disponible para compras.<br>
                 Te sugerimos volver a consultar más adelante.
             </div>
         </div>
@@ -351,7 +327,7 @@ if st.session_state.cliente_data:
             </div>
             <div class="card-footer">
                 <div class="card-balance-group">
-                    <div class="card-balance-label">Saldo Disponible</div>
+                    <div class="card-balance-label">Límite de Compra</div>
                     <div class="card-balance">${cupo:,.2f}</div>
                 </div>
                 <div class="status-capsule">
@@ -362,8 +338,7 @@ if st.session_state.cliente_data:
         """
         st.markdown(html_raw, unsafe_allow_html=True)
         
-        # LÓGICA DE BOTÓN HÍBRIDO (TRACKING + REDIRECT)
-        if st.button("🛒 USAR MI SALDO AHORA ➜", use_container_width=True):
+        if st.button("🛒 APROVECHAR MI LÍMITE AHORA ➜", use_container_width=True):
             log_click(data['dni'])
             js = f"window.open('{LINK_TIENDA}', '_blank')"
             html = f"<script>{js}</script>"
@@ -378,6 +353,18 @@ if st.session_state.cliente_data:
             </div>
             """, unsafe_allow_html=True)
             
-        st.markdown('<div class="legal-text">* Al finalizar tu compra elegí la opción "A Convenir"</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="instruction-text">
+            ℹ️ Al finalizar tu compra elegí la opción <b>"Financiación en Factura SSServicios"</b><br>
+            y no olvides poner tu <b>número de cliente</b>.
+        </div>
+        """, unsafe_allow_html=True)
+
+# LEGALES
+st.markdown("""
+<div class="scoring-legales">
+    El límite de compra se asigna automáticamente según tu plan de servicio, historial de pagos y antigüedad como cliente.
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown('<div class="footer-security">🔒 Sistema seguro de SSServicios</div>', unsafe_allow_html=True)
